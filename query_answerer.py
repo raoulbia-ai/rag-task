@@ -138,14 +138,18 @@ class QueryAnswerer:
         2. Only include citations in [citation:X] format when you directly use information from document X
         3. If documents contradict each other, mention the discrepancy
         4. If the question cannot be answered from the provided documents, say so clearly and do NOT include any citations
-        5. Format your response in a clear, concise manner using appropriate formatting:
-           - Use bullet points for lists
-           - Use numbered steps for procedures
-           - Use headings and subheadings for complex answers
-           - Use code blocks for code examples
-        6. For 'how-to' questions, structure answers as ordered steps
+        5. Format your response using HTML tags for proper display:
+           - Use <ul><li>item</li></ul> for bullet point lists
+           - Use <ol><li>step</li></ol> for numbered steps/procedures
+           - Use <h3>heading</h3> for section headings
+           - Use <code>code</code> for inline code
+           - Use <pre><code>code block</code></pre> for code blocks
+           - Use <strong>text</strong> for bold text
+           - Use <p>text</p> for paragraph breaks
+        6. For 'how-to' questions, structure answers as ordered steps with <ol><li>step</li></ol> tags
         7. If no documentation is provided or the query is conversational (like greetings or unrelated to Kafka, React, or Spark), respond in a friendly way explaining that you're a documentation assistant without including any citations
         8. IMPORTANT: Only use citations when you actually reference specific information from the documents
+        9. IMPORTANT: Ensure your response is properly formatted with HTML to display nicely in a web interface
         """
         
         # Create user prompt
@@ -161,7 +165,13 @@ class QueryAnswerer:
         - Only use citations when you actually reference specific information from the documents
         - If the question can't be answered from the documents or is unrelated to Kafka, React, or Spark, don't include any citations
         - For conversational queries or greetings, respond in a friendly way without citations
-        - Format your response appropriately with bullet points, numbered steps, etc. as needed
+        - Use proper HTML formatting for your response:
+          * <ul><li>item</li></ul> for bullet points
+          * <ol><li>step</li></ol> for numbered steps
+          * <h3>heading</h3> for section headings
+          * <strong>text</strong> for emphasis
+          * <p>text</p> for paragraphs
+          * <code>code</code> for inline code
         """
         
         # Call the OpenAI API
