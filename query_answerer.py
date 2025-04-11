@@ -10,19 +10,30 @@ import json
 import re
 from pathlib import Path
 from document_indexer import DocumentIndexer
+from openai import OpenAI
 
 class QueryAnswerer:
     """System for answering user queries with citations."""
     
-    def __init__(self, index_dir):
+    def __init__(self, index_dir, use_llm=True):
         """
         Initialize the query answerer.
         
         Args:
             index_dir (str): Directory containing the document index
+            use_llm (bool): Whether to use LLM for answer generation
         """
         self.index_dir = index_dir
         self.indexer = DocumentIndexer.load_index(index_dir)
+        self.use_llm = use_llm and os.environ.get("OPENAI_API_KEY") is not None
+        
+        # Initialize OpenAI client if API key is available
+        if self.use_llm:
+            try:
+                self.client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
+            except Exception as e:
+                print(f"Error initializing OpenAI client: {e}")
+                self.use_llm = False
         
         # Load chunks for citation information
         with open(os.path.join(index_dir, 'chunks.json'), 'r', encoding='utf-8') as file:
@@ -56,11 +67,19 @@ class QueryAnswerer:
                 'citations': []
             }
         
-        # Build context from relevant chunks
-        context = self._build_context(context_results)
-        
-        # Generate answer
-        answer = self._generate_answer(question, context_results)
+        # Generate answer using LLM
+        try:
+            answer = self._generate_llm_answer(question, context_results)
+        except Exception as e:
+            # Handle errors with informative messages
+            error_message = f"Error generating answer: {str(e)}"
+            print(error_message)
+            return {
+                'question': question,
+                'answer': "Sorry, I encountered an error while generating your answer. Please check the API key or try again later.",
+                'citations': [],
+                'error': error_message
+            }
         
         # Create citations
         citations = self._create_citations(context_results)
@@ -89,9 +108,78 @@ class QueryAnswerer:
         
         return "\n\n".join(context_parts)
     
-    def _generate_answer(self, question, results):
+    def _generate_llm_answer(self, question, results, max_tokens=1024):
         """
-        Generate an answer based on the question and search results.
+        Generate an answer using an LLM based on the question and search results.
+        
+        Args:
+            question (str): User question
+            results (list): Search results
+            max_tokens (int): Maximum length of generated response
+            
+        Returns:
+            str: Generated answer with citations
+        """
+        # Skip if no results found
+        if not results:
+            return "I couldn't find relevant information to answer this question in the provided documentation."
+        
+        # Build context from retrieved chunks
+        context_parts = []
+        for i, result in enumerate(results):
+            chunk = result['chunk']
+            # Add source information for citation
+            context_part = f"Document {i+1}: {chunk['title']} (from {chunk['technology']} documentation)\n"
+            context_part += f"Content: {chunk['content']}\n"
+            context_parts.append(context_part)
+        
+        # Combine all context parts
+        context = "\n".join(context_parts)
+        
+        # Create system prompt
+        system_prompt = """
+        You are a helpful documentation assistant. 
+        When answering questions:
+        1. Only use information from the provided documentation excerpts
+        2. Always include citations in [citation:X] format where X is the document number
+        3. If documents contradict each other, mention the discrepancy
+        4. If the question cannot be answered from the provided documents, say so clearly
+        5. Format your response in a clear, concise manner
+        6. For 'how-to' questions, structure answers as ordered steps when appropriate
+        """
+        
+        # Create user prompt
+        user_prompt = f"""
+        Based on the following documentation excerpts, please answer the question: "{question}"
+        
+        {context}
+        
+        Please provide a comprehensive and accurate answer. When you use information from the documents, 
+        include a citation in this format: [citation:X] where X is the document number.
+        Focus only on information provided in the documents.
+        """
+        
+        # Call the OpenAI API
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",  # Using gpt-3.5-turbo for development
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=0.2  # Lower temperature for more deterministic responses
+            )
+            
+            return response.choices[0].message.content
+        except Exception as e:
+            # Re-raise the exception for the caller to handle
+            raise Exception(f"OpenAI API call failed: {str(e)}")
+            
+    def _legacy_generate_answer(self, question, results):
+        """
+        Legacy template-based answer generation method. Not used in the current implementation.
+        Kept for reference only.
         
         Args:
             question (str): User question
@@ -100,61 +188,9 @@ class QueryAnswerer:
         Returns:
             str: Generated answer
         """
-        # In a real implementation, this would use an LLM to generate the answer
-        # For this implementation, we'll create a structured answer from the top results
-        
-        # Extract technology from top result
-        top_technology = results[0]['chunk']['technology'] if results else "unknown"
-        
-        # Create answer introduction based on question type
-        if re.search(r'what is|what are|explain|describe', question.lower()):
-            intro = f"Based on the {top_technology} documentation, "
-        elif re.search(r'how to|how do|steps|process', question.lower()):
-            intro = f"According to the {top_technology} documentation, you can "
-        elif re.search(r'is|are|can|does|do', question.lower()):
-            intro = f"The {top_technology} documentation indicates that "
-        else:
-            intro = f"Based on the {top_technology} documentation, "
-        
-        # Combine content from top results
-        content_parts = []
-        for i, result in enumerate(results):
-            chunk = result['chunk']
-            # Add citation marker
-            content = f"{chunk['content']} [citation:{i+1}]"
-            content_parts.append(content)
-        
-        # Join content parts with appropriate transitions
-        if len(content_parts) == 1:
-            content = content_parts[0]
-        else:
-            # Use different joining strategies based on question type
-            if re.search(r'how to|steps|process', question.lower()):
-                # For how-to questions, number the steps
-                numbered_parts = [f"{i+1}. {part}" for i, part in enumerate(content_parts)]
-                content = "\n".join(numbered_parts)
-            else:
-                # For other questions, join with transitions
-                transitions = [
-                    "Additionally, ", 
-                    "Furthermore, ", 
-                    "Moreover, ", 
-                    "Also, ", 
-                    "In addition, "
-                ]
-                joined_parts = [content_parts[0]]
-                for i, part in enumerate(content_parts[1:]):
-                    transition = transitions[i % len(transitions)]
-                    joined_parts.append(f"{transition}{part}")
-                content = " ".join(joined_parts)
-        
-        # Combine intro and content
-        answer = f"{intro}{content}"
-        
-        # Clean up citation markers for better readability
-        answer = re.sub(r'\s+\[citation:(\d+)\]', r' [citation:\1]', answer)
-        
-        return answer
+        # This was the original template-based implementation
+        # It is no longer used and kept only for reference
+        pass
     
     def _create_citations(self, results):
         """

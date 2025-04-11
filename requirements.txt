@@ -4,3 +4,5 @@ markdown
 faiss-cpu 
 scikit-learn 
 nltk
+openai
+python-dotenv
