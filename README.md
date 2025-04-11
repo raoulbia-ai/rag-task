@@ -27,10 +27,10 @@ An AI-powered system that answers questions about Kafka, React, and Spark docume
 
 ### Environment Setup
 
-1. Clone the repository:
+1. Extract the zip file:
 ```bash
-git clone <repository-url>
-cd <repository-directory>
+unzip documentation-assistant.zip
+cd documentation-assistant
 ```
 
 2. Create and activate a virtual environment:
@@ -158,6 +158,30 @@ The system uses several carefully designed prompts:
    - Multiple rounds may be needed for very ambiguous queries
 
 These limitations are acceptable for an MVP and could be addressed in future versions with more advanced models (GPT-4) or fine-tuning.
+
+## Proposed Improvements
+
+Based on analysis of conversation patterns, the following improvements are recommended for future iterations:
+
+### 1. Enhanced Query Interpretation
+- Implement a pre-processing step that analyzes queries for partial technology matches
+- Create a mapping of common terms to technologies (e.g., "cluster" → check all technologies)
+- Use a lightweight classifier to detect the likely technology domain even with ambiguous terms
+- Add common synonyms and related concepts to each technology (e.g., "node", "instance", "cluster")
+
+### 2. Better Handling of Negative Results
+- Modify the query clarity prompt to detect domain-specific but vague queries
+- When no results are found, have the LLM generate follow-up clarification options first
+- Use a confidence threshold - if below a certain level, ask for clarification before responding negatively
+- Include "did you mean..." suggestions based on similar terms in the documentation
+
+### 3. More Natural Citations
+- Update the HTML formatting in the prompt to use superscript tags for citations
+- Create a more elegant styling for citations with smaller, less intrusive formatting
+- Consider moving detailed citations to footnotes with hover effects for details
+- Use a more natural in-text citation style (e.g., "According to Spark documentation...")
+
+These enhancements could be implemented with relatively minor changes to the existing prompts and UI elements, without requiring architectural changes to the overall system.
 
 ## Project Structure
 
