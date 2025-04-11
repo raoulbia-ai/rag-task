@@ -209,4 +209,3 @@ These enhancements could be implemented with relatively minor changes to the exi
   import nltk
   nltk.download('punkt')
   ```
-- If Streamlit doesn't launch, try running with `python -m streamlit run streamlit_app.py`
