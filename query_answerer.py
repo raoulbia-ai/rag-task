@@ -74,8 +74,8 @@ class QueryAnswerer:
                 'error': error_message
             }
         
-        # Create citations
-        citations = self._create_citations(context_results)
+        # Create citations, but only include citations that were actually referenced in the answer
+        citations = self._create_citations(context_results, answer)
         
         return {
             'question': question,
@@ -132,14 +132,20 @@ class QueryAnswerer:
         # Create system prompt
         system_prompt = """
         You are a helpful documentation assistant for Kafka, React, and Spark. 
+        
         When answering questions:
         1. Only use information from the provided documentation excerpts if available
-        2. Always include citations in [citation:X] format where X is the document number when using information from documents
+        2. Only include citations in [citation:X] format when you directly use information from document X
         3. If documents contradict each other, mention the discrepancy
-        4. If the question cannot be answered from the provided documents, say so clearly
-        5. Format your response in a clear, concise manner
-        6. For 'how-to' questions, structure answers as ordered steps when appropriate
-        7. If no documentation is provided or the query is conversational (like greetings), respond in a friendly, helpful way explaining that you're a documentation assistant for Kafka, React, and Spark
+        4. If the question cannot be answered from the provided documents, say so clearly and do NOT include any citations
+        5. Format your response in a clear, concise manner using appropriate formatting:
+           - Use bullet points for lists
+           - Use numbered steps for procedures
+           - Use headings and subheadings for complex answers
+           - Use code blocks for code examples
+        6. For 'how-to' questions, structure answers as ordered steps
+        7. If no documentation is provided or the query is conversational (like greetings or unrelated to Kafka, React, or Spark), respond in a friendly way explaining that you're a documentation assistant without including any citations
+        8. IMPORTANT: Only use citations when you actually reference specific information from the documents
         """
         
         # Create user prompt
@@ -148,9 +154,14 @@ class QueryAnswerer:
         
         {context}
         
-        Please provide a comprehensive and accurate answer. When you use information from the documents, 
+        Please provide a comprehensive and accurate answer. When you directly quote or use specific information from the documents, 
         include a citation in this format: [citation:X] where X is the document number.
-        Focus only on information provided in the documents.
+        
+        IMPORTANT: 
+        - Only use citations when you actually reference specific information from the documents
+        - If the question can't be answered from the documents or is unrelated to Kafka, React, or Spark, don't include any citations
+        - For conversational queries or greetings, respond in a friendly way without citations
+        - Format your response appropriately with bullet points, numbered steps, etc. as needed
         """
         
         # Call the OpenAI API
@@ -186,18 +197,24 @@ class QueryAnswerer:
         # It is no longer used and kept only for reference
         pass
     
-    def _create_citations(self, results):
+    def _create_citations(self, results, answer=""):
         """
-        Create citations from search results.
+        Create citations from search results, filtering to only include
+        citations that were actually used in the answer.
         
         Args:
             results (list): Search results
+            answer (str): Generated answer with citation markers
             
         Returns:
-            list: Citations
+            list: Citations that are referenced in the answer
         """
-        citations = []
+        # If no results or empty answer, return empty citations
+        if not results or not answer:
+            return []
         
+        # Create all possible citations
+        all_citations = []
         for i, result in enumerate(results):
             chunk = result['chunk']
             citation = {
@@ -207,9 +224,24 @@ class QueryAnswerer:
                 'title': chunk['title'],
                 'relevance': result['score']
             }
-            citations.append(citation)
+            all_citations.append(citation)
         
-        return citations
+        # Find citation references in the answer
+        used_citation_ids = []
+        citation_pattern = r'\[citation:(\d+)\]'
+        matches = re.findall(citation_pattern, answer)
+        
+        # Convert to integers and make unique
+        if matches:
+            used_citation_ids = [int(id) for id in matches]
+            used_citation_ids = list(set(used_citation_ids))
+        
+        # Filter to only include citations that were actually referenced
+        if used_citation_ids:
+            return [cit for cit in all_citations if cit['id'] in used_citation_ids]
+        
+        # If no citations were used in the answer, return empty list
+        return []
 
 
 if __name__ == "__main__":
