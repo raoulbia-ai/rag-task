@@ -330,24 +330,10 @@ if "awaiting_followup" not in st.session_state:
 if "current_query" not in st.session_state:
     st.session_state.current_query = ""
 
-# Show example questions as buttons at the beginning if no messages yet
+# Empty placeholder to maintain layout
 if not st.session_state.messages:
-    st.markdown("### Try these example questions:")
-    example_cols = st.columns(2)
-    example_questions = [
-        "What is the compiler?",
-        "How do I get started developing a UI?",
-        "How to secure my cluster?", 
-        "How to update the SSL keystore?",
-        "Is streaming supported?"
-    ]
-    
-    for i, example in enumerate(example_questions):
-        col = example_cols[i % 2]
-        if col.button(example, key=f"example_{i}"):
-            st.session_state.messages.append({"role": "user", "content": example})
-            # Force a rerun to show the new message
-            st.rerun()
+    st.markdown("Ask any question about Kafka, React, or Spark documentation.")
+    st.markdown("---")
 
 # Display chat messages
 for message in st.session_state.messages:
