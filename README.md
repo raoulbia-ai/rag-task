@@ -1,45 +1,68 @@
-# Documentation AI Assistant
+# Documentation AI Assistant with Conversational RAG
 
-This is a smart generative AI solution that works with documentation from Kafka, React, and Spark to answer questions with proper citations.
+An AI-powered system that answers questions about Kafka, React, and Spark documentation using retrieval augmented generation (RAG) with a conversational interface.
 
 ## Features
 
-- Processes HTML and Markdown documentation files
-- Creates searchable indices for efficient information retrieval
-- Answers questions using relevant content from documentation
-- Provides proper citations to source documentation
-- Offers a web interface for easy interaction
+- **Conversational Interface**: Multi-turn conversations with follow-up questions
+- **Documentation Search**: Processes HTML and Markdown documentation files
+- **Vector-based Retrieval**: Uses FAISS and TF-IDF for efficient information retrieval
+- **LLM Integration**: Uses OpenAI for answer generation and conversation management
+- **Citation System**: Provides proper citations to source documentation
+- **Streamlit UI**: Interactive chat interface with conversation memory
 
 ## Requirements
 
 - Python 3.10+
-- Flask
+- Streamlit
+- OpenAI API key
+- FAISS
 - BeautifulSoup4
 - Markdown
-- FAISS
 - scikit-learn
 - NLTK
+- python-dotenv
 
-## Installation
+## Installation and Setup
 
-1. Clone the repository or extract the provided files
-2. Install the required dependencies:
+### Environment Setup
 
+1. Clone the repository:
 ```bash
-pip install flask beautifulsoup4 markdown faiss-cpu scikit-learn nltk
+git clone <repository-url>
+cd <repository-directory>
 ```
 
-## Usage
+2. Create and activate a virtual environment:
+```bash
+# Using venv
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# OR using conda
+conda create -n doc-assistant python=3.10
+conda activate doc-assistant
+```
+
+3. Install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+4. Set up environment variables:
+```bash
+# Create a .env file in the project root
+echo "OPENAI_API_KEY=your_api_key_here" > .env
+```
 
 ### Processing Documentation
 
 Before using the AI assistant, you need to process the documentation files:
 
-1. Place your documentation files in a directory (HTML and/or Markdown formats)
+1. Place your documentation files in the `files/` directory (HTML and/or Markdown formats)
 2. Run the document processing script:
 
 ```bash
-cd document_processor
 python process_documents.py
 ```
 
@@ -50,102 +73,132 @@ This will:
 - Build a searchable index
 - Save the processed documents and index
 
-### Running the Web Interface
+## Running the Application
 
-To start the web interface:
+### Streamlit Interface (Recommended)
+
+To start the Streamlit chat interface:
 
 ```bash
-cd document_processor
+python -m streamlit run streamlit_app.py
+```
+
+This will open a browser window with the chat interface where you can ask questions about the documentation.
+
+### Flask Web Interface (Legacy)
+
+To use the original Flask interface:
+
+```bash
 python app.py
 ```
 
-This will start a Flask server on port 5000. You can access the web interface at:
-- http://localhost:5000 (local access)
-- Or via the exposed port URL (if using a cloud environment)
+This will start a Flask server on port 5000. You can access the web interface at http://localhost:5000.
 
-### Using the API Directly
+## Architecture
 
-You can also use the API directly:
+### System Components
 
-```bash
-curl -X POST -H "Content-Type: application/json" -d '{"question":"What is the compiler?"}' http://localhost:5000/api/answer
-```
+1. **Document Processing Pipeline**:
+   - `document_parser.py`: Parses HTML and Markdown documents
+   - `document_indexer.py`: Creates searchable indices from processed documents
+   - `process_documents.py`: Main script to process all documentation
+
+2. **Query Processing & LLM Integration**:
+   - `query_answerer.py`: Core RAG implementation with LLM integration
+   - OpenAI API integration for answer generation
+
+3. **User Interfaces**:
+   - `streamlit_app.py`: Streamlit-based conversational interface
+   - `app.py`: Flask-based web interface (legacy)
+
+### Conversation Flow
+
+1. **Query Clarity Check**:
+   - Incoming user query is analyzed for clarity and specificity
+   - If unclear, follow-up questions are generated
+
+2. **Context-Aware Retrieval**:
+   - Conversation history is used to enhance retrieval
+   - Queries are reformulated based on context when appropriate
+
+3. **RAG Processing**:
+   - Relevant documents are retrieved from the vector store
+   - Retrieved documents and query are sent to the LLM
+   - LLM generates a comprehensive answer with citations
+
+## Prompt Engineering
+
+The system uses several carefully designed prompts:
+
+1. **Query Clarity Prompt**:
+   - Determines if a user question is specific enough to search for
+   - Generates follow-up questions for ambiguous queries
+   - Focuses on extracting the single most important missing piece of information
+
+2. **Query Reformulation Prompt**:
+   - Combines original questions with follow-up clarifications
+   - Creates coherent search queries that focus on documentation terms
+   - Ensures specific technologies (Kafka, React, Spark) are properly prioritized
+
+3. **Context Consideration Prompt**:
+   - Detects when a query references previous conversation
+   - Enhances queries with relevant context from conversation history
+   - Handles pronouns and implicit references
+
+4. **Answer Generation Prompt**:
+   - Instructions to use HTML formatting for better display
+   - Citation guidelines to only cite when information is used
+   - Specific formatting for different response types (lists, code, etc.)
+
+## Known Limitations
+
+1. **Query Reformulation Accuracy**:
+   - GPT-3.5-turbo sometimes over-interprets minimal context
+   - May connect related technologies even when not explicitly mentioned
+   - Example: When asking about "streaming", might pull in both Kafka and Spark contexts
+
+2. **Context Window Limitations**:
+   - Limited conversation history due to model context constraints
+   - Very long conversations may lose earlier context
+
+3. **Citation Precision**:
+   - Citations are based on retrieved documents, not the model's knowledge
+   - The system may not always cite the most relevant source
+
+4. **Follow-up Question Quality**:
+   - Follow-up questions might sometimes be too generic
+   - Multiple rounds may be needed for very ambiguous queries
+
+These limitations are acceptable for an MVP and could be addressed in future versions with more advanced models (GPT-4) or fine-tuning.
 
 ## Project Structure
 
 - `document_parser.py`: Parses HTML and Markdown documents
 - `document_indexer.py`: Creates searchable indices from processed documents
-- `query_answerer.py`: Answers questions using the document index
+- `query_answerer.py`: Answers questions using the document index and LLM
 - `process_documents.py`: Main script to process all documentation
-- `app.py`: Flask web application
-- `templates/index.html`: Web interface template
+- `app.py`: Flask web application (legacy)
+- `streamlit_app.py`: Streamlit chat interface
+- `templates/`: Web interface templates for Flask
 - `static/`: Static files for the web interface
-- `processed_files/`: Directory containing processed documents and indices:
-  - `extracted_raw_documents.json`: Extracted content from raw documents
-  - `search_index/`: Directory containing search index files
+- `files/`: Source documentation files
+- `processed_files/`: Directory containing processed documents and indices
 
-## Example Questions
+## Future Enhancements
 
-The system can answer questions like:
-- "What is the compiler?"
-- "How do I get started developing a UI?"
-- "How to secure my cluster?"
-- "How to update the SSL keystore?"
-- "Is streaming supported?"
-
-## Document Processing Pipeline
-
-The document processing system consists of two main components that work in sequence:
-
-1. **Document Parser** (`document_parser.py`):
-   - **Purpose**: Extracts and processes raw content from HTML and Markdown files
-   - **Input**: Raw document files (.html, .md)
-   - **Output**: Structured JSON data with extracted content and metadata
-   - **Process**: Parses files → Extracts text and metadata → Saves to `extracted_raw_documents.json` in processed_files directory
-
-2. **Document Indexer** (`document_indexer.py`):
-   - **Purpose**: Creates searchable indices from processed documents
-   - **Input**: Processed JSON data from the parser (`extracted_raw_documents.json`)
-   - **Output**: Vector-based search index for efficient document retrieval
-   - **Process**: Loads processed data → Chunks documents → Creates TF-IDF vectors → Builds FAISS index in `search_index` directory
-
-This two-stage pipeline allows for efficient document processing and retrieval, separating the concerns of content extraction and search indexing.
-
-## How It Works
-
-1. **Document Processing**:
-   - HTML Parser extracts text from Kafka HTML documentation
-   - Markdown Parser extracts text from React and Spark Markdown documentation
-   - Document Indexer creates searchable index of all content
-   - Metadata Extractor captures document information for citations
-
-2. **Query Processing**:
-   - Query Analyzer identifies key terms in user questions
-   - Search Engine finds relevant document chunks
-   - Context Builder assembles information from search results
-   - Response Generator creates comprehensive answers
-   - Citation Manager adds proper citations to responses
-
-3. **User Interface**:
-   - Web Interface allows users to input questions and view responses
-   - API Endpoint provides programmatic access to the system
-
-## Customization
-
-You can customize the system by:
-- Adding more documentation files to the base directory
-- Adjusting chunk size in `document_indexer.py`
-- Modifying search parameters in `query_answerer.py`
-- Changing the UI design in `templates/index.html`
+- Upgrade to embedding-based vector search
+- Add re-ranking of retrieved documents
+- Implement caching for frequent queries
+- Switch to a more advanced LLM like GPT-4
+- Add document-grounded fact checking
 
 ## Troubleshooting
 
-- If you encounter NLTK errors, ensure you've downloaded the required data:
+- If OpenAI API calls fail, verify your API key in the .env file
+- For processing errors, ensure NLTK has the required data:
   ```python
   import nltk
   nltk.download('punkt')
   ```
-
-- If the web interface doesn't load, check that Flask is running and the port is accessible
-
-- For large documentation sets, increase the memory allocation if needed
+- If Streamlit doesn't launch, try running with `python -m streamlit run streamlit_app.py`
