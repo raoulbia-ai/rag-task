@@ -75,8 +75,6 @@ This will:
 
 ## Running the Application
 
-### Streamlit Interface (Recommended)
-
 To start the Streamlit chat interface:
 
 ```bash
@@ -84,16 +82,6 @@ python -m streamlit run streamlit_app.py
 ```
 
 This will open a browser window with the chat interface where you can ask questions about the documentation.
-
-### Flask Web Interface (Legacy)
-
-To use the original Flask interface:
-
-```bash
-python app.py
-```
-
-This will start a Flask server on port 5000. You can access the web interface at http://localhost:5000.
 
 ## Architecture
 
@@ -108,9 +96,8 @@ This will start a Flask server on port 5000. You can access the web interface at
    - `query_answerer.py`: Core RAG implementation with LLM integration
    - OpenAI API integration for answer generation
 
-3. **User Interfaces**:
+3. **User Interface**:
    - `streamlit_app.py`: Streamlit-based conversational interface
-   - `app.py`: Flask-based web interface (legacy)
 
 ### Conversation Flow
 
@@ -178,10 +165,7 @@ These limitations are acceptable for an MVP and could be addressed in future ver
 - `document_indexer.py`: Creates searchable indices from processed documents
 - `query_answerer.py`: Answers questions using the document index and LLM
 - `process_documents.py`: Main script to process all documentation
-- `app.py`: Flask web application (legacy)
 - `streamlit_app.py`: Streamlit chat interface
-- `templates/`: Web interface templates for Flask
-- `static/`: Static files for the web interface
 - `files/`: Source documentation files
 - `processed_files/`: Directory containing processed documents and indices
 
