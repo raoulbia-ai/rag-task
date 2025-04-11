@@ -332,7 +332,6 @@ if "current_query" not in st.session_state:
 
 # Empty placeholder to maintain layout
 if not st.session_state.messages:
-    st.markdown("Ask any question about Kafka, React, or Spark documentation.")
     st.markdown("---")
 
 # Display chat messages
