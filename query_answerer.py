@@ -60,14 +60,7 @@ class QueryAnswerer:
         # Limit to max_context_chunks
         context_results = relevant_results[:max_context_chunks]
         
-        if not context_results:
-            return {
-                'question': question,
-                'answer': "I couldn't find relevant information to answer this question in the provided documentation.",
-                'citations': []
-            }
-        
-        # Generate answer using LLM
+        # Generate answer using LLM (even if no relevant results found)
         try:
             answer = self._generate_llm_answer(question, context_results)
         except Exception as e:
@@ -120,10 +113,6 @@ class QueryAnswerer:
         Returns:
             str: Generated answer with citations
         """
-        # Skip if no results found
-        if not results:
-            return "I couldn't find relevant information to answer this question in the provided documentation."
-        
         # Build context from retrieved chunks
         context_parts = []
         for i, result in enumerate(results):
@@ -136,16 +125,21 @@ class QueryAnswerer:
         # Combine all context parts
         context = "\n".join(context_parts)
         
+        # If no results found, note this in the prompt
+        if not results:
+            context = "No relevant documentation was found for this query."
+        
         # Create system prompt
         system_prompt = """
-        You are a helpful documentation assistant. 
+        You are a helpful documentation assistant for Kafka, React, and Spark. 
         When answering questions:
-        1. Only use information from the provided documentation excerpts
-        2. Always include citations in [citation:X] format where X is the document number
+        1. Only use information from the provided documentation excerpts if available
+        2. Always include citations in [citation:X] format where X is the document number when using information from documents
         3. If documents contradict each other, mention the discrepancy
         4. If the question cannot be answered from the provided documents, say so clearly
         5. Format your response in a clear, concise manner
         6. For 'how-to' questions, structure answers as ordered steps when appropriate
+        7. If no documentation is provided or the query is conversational (like greetings), respond in a friendly, helpful way explaining that you're a documentation assistant for Kafka, React, and Spark
         """
         
         # Create user prompt
