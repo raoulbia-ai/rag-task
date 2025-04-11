@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Documentation AI Assistant</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+        }
+        h1 {
+            color: #2c3e50;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .search-container {
+            display: flex;
+            margin-bottom: 30px;
+        }
+        #question {
+            flex: 1;
+            padding: 12px 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+            font-size: 16px;
+        }
+        #search-button {
+            padding: 12px 20px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background-color 0.3s;
+        }
+        #search-button:hover {
+            background-color: #2980b9;
+        }
+        .answer-container {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            border-left: 4px solid #3498db;
+        }
+        .answer-text {
+            margin-bottom: 20px;
+            line-height: 1.8;
+        }
+        .citations-title {
+            font-weight: bold;
+            margin-top: 20px;
+            color: #2c3e50;
+        }
+        .citation {
+            margin: 5px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        .citation a {
+            color: #3498db;
+            text-decoration: none;
+        }
+        .citation a:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3498db;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .example-questions {
+            margin-top: 30px;
+            background-color: #eaf2f8;
+            padding: 15px;
+            border-radius: 4px;
+        }
+        .example-questions h3 {
+            margin-top: 0;
+            color: #2c3e50;
+        }
+        .example-questions ul {
+            padding-left: 20px;
+        }
+        .example-questions li {
+            margin-bottom: 8px;
+            cursor: pointer;
+            color: #3498db;
+        }
+        .example-questions li:hover {
+            text-decoration: underline;
+        }
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 14px;
+            color: #7f8c8d;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Documentation AI Assistant</h1>
+        
+        <div class="search-container">
+            <input type="text" id="question" placeholder="Ask a question about Kafka, React, or Spark...">
+            <button id="search-button">Ask</button>
+        </div>
+        
+        <div class="loading">
+            <div class="spinner"></div>
+            <p>Searching documentation...</p>
+        </div>
+        
+        <div class="answer-container" id="answer-container">
+            <div class="answer-text" id="answer-text"></div>
+            <div class="citations-title">Sources:</div>
+            <div id="citations-list"></div>
+        </div>
+        
+        <div class="example-questions">
+            <h3>Example Questions:</h3>
+            <ul>
+                <li onclick="setQuestion('What is the compiler?')">What is the compiler?</li>
+                <li onclick="setQuestion('How do I get started developing a UI?')">How do I get started developing a UI?</li>
+                <li onclick="setQuestion('How to secure my cluster?')">How to secure my cluster?</li>
+                <li onclick="setQuestion('How to update the SSL keystore?')">How to update the SSL keystore?</li>
+                <li onclick="setQuestion('Is streaming supported?')">Is streaming supported?</li>
+            </ul>
+        </div>
+        
+        <div class="footer">
+            <p>This AI assistant uses documentation from Kafka, React, and Spark to answer your questions.</p>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const questionInput = document.getElementById('question');
+            const searchButton = document.getElementById('search-button');
+            const answerContainer = document.getElementById('answer-container');
+            const answerText = document.getElementById('answer-text');
+            const citationsList = document.getElementById('citations-list');
+            const loading = document.querySelector('.loading');
+            
+            searchButton.addEventListener('click', function() {
+                const question = questionInput.value.trim();
+                if (question) {
+                    // Show loading spinner
+                    loading.style.display = 'block';
+                    answerContainer.style.display = 'none';
+                    
+                    // Make API request
+                    fetch('/api/answer', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ question: question }),
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        // Hide loading spinner
+                        loading.style.display = 'none';
+                        
+                        // Display answer
+                        answerText.innerHTML = formatAnswer(data.answer);
+                        
+                        // Display citations
+                        citationsList.innerHTML = '';
+                        data.citations.forEach(citation => {
+                            const citationElement = document.createElement('div');
+                            citationElement.className = 'citation';
+                            citationElement.innerHTML = `[${citation.id}] <strong>${citation.title}</strong> (${citation.technology}) - ${citation.source_file}`;
+                            citationsList.appendChild(citationElement);
+                        });
+                        
+                        // Show answer container
+                        answerContainer.style.display = 'block';
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        loading.style.display = 'none';
+                        answerText.innerHTML = 'An error occurred while processing your question. Please try again.';
+                        citationsList.innerHTML = '';
+                        answerContainer.style.display = 'block';
+                    });
+                }
+            });
+            
+            // Allow pressing Enter to submit
+            questionInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    searchButton.click();
+                }
+            });
+            
+            // Format answer text to highlight citations
+            function formatAnswer(text) {
+                return text.replace(/\[citation:(\d+)\]/g, '<sup>[$1]</sup>');
+            }
+        });
+        
+        // Function to set question from examples
+        function setQuestion(text) {
+            document.getElementById('question').value = text;
+            document.getElementById('search-button').click();
+        }
+    </script>
+</body>
+</html>

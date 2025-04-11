@@ -1,0 +1,6 @@
+flask 
+beautifulsoup4 
+markdown 
+faiss-cpu 
+scikit-learn 
+nltk
